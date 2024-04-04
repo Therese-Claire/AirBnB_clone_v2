@@ -39,12 +39,11 @@ server {
 # Fake HTML file to test nginx config
 HOME_PAGE='<!DOCTYPE html>
 <html lang="en-US">
-        <head>
-                <title>Home - AirBnB Clone</title>
-        </head>
-        <body>
-                <h1> Welcome to AirBnB By Holberton</h1>
-        </body>
+	<head>
+	</head>
+	<body>
+		Holberton
+	</body>
 </html>'
 
 mkdir -p /var/www/html /var/www/error
