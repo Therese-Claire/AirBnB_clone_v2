@@ -19,7 +19,7 @@ def do_pack():
     result = local("tar -czvf {} web_static".format(archive_path))
 
     if result.succeeded:
-        return result
+        return archive_path
     else:
         return None
 
