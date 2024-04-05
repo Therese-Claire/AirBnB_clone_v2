@@ -14,8 +14,7 @@ def do_pack():
     archive_path = "versions/{}".format(archive_name)
 
     makedirs("versions", exist_ok=True)
-    result = local("tar -czvf {} web_static".format(archive_path),
-                   capture=False)
+    result = local("tar -czvf {} web_static".format(archive_path))
 
     if result.succeeded:
         return archive_path
