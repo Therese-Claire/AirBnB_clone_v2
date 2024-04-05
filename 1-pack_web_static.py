@@ -15,10 +15,10 @@ def do_pack():
     archive_name = "web_static_{}.tgz".format(timestamp)
     archive_path = "versions/{}".format(archive_name)
 
-    makedirs("versions")
+    makedirs("versions", exist_ok=True)
     result = local("tar -czvf {} web_static".format(archive_path))
 
     if result.succeeded:
-        return archive_path
+        return result
     else:
         return None
