@@ -1,125 +1,68 @@
 #!/usr/bin/python3
-"""
-script (based on the file 2-do_deploy_web_static.py) that creates and
-distributes an archive to web servers
-"""
-import os.path
-from fabric.api import *
-from fabric.operations import run, put
+"""A Fabric script (based on the file 2-do_deploy_web_static.py) that creates
+and distributes an archive to your web servers"""
+from fabric.api import local
 from datetime import datetime
+from os import makedirs
+from fabric.api import env, put, run, runs_once
+import os
 
 
+env.user = 'ubuntu'
 env.hosts = ['54.236.26.138', '3.84.158.55']
-env.user = "ubuntu"
 
 
-def deploy():
-    """creates and distributes an archive to your web servers
-
-    All remote commands must be executed on both of web your servers (using
-    env.hosts = ['<IP web-01>', 'IP web-02'] variable in your script).
-    You must use this script to deploy it on your servers: xx-web-01 and
-    xx-web-02.
-
-    Returns:
-        _type_: value of do_deploy
-    """
-    # Call the do_pack() function and store the path of the created archive
-    archive_path = do_pack()
-    if archive_path is None:
-        print("Failed to create archive from web_static")
-        return False
-
-    # Call do_deploy function, using the new path of the new archive and
-    # return the return value of do_deploy
-    return do_deploy(archive_path)
-
-
+@runs_once
 def do_pack():
-    """ generates a .tgz archive from the contents of the web_static
+    """Fabric script that generates a .tgz archive
+    from the contents of the web_static folder of your AirBnB Clone repo"""
+    now = datetime.now()
+    timestamp = now.strftime("%Y%m%d%H%M%S")
+    archive_name = "web_static_{}.tgz".format(timestamp)
+    archive_path = "versions/{}".format(archive_name)
 
-    All files in the folder web_static must be added to the final archive.
-    All archives must be stored in the folder versions.
-    The name of the archive created must be:
-        web_static_<year><month><day><hour><minute><second>.tgz
-    The function do_pack must return the archive path if the archive has
-    been correctly generated. Otherwise, it should return None.
+    makedirs("versions", exist_ok=True)
+    result = local("tar -czvf {} web_static".format(archive_path))
 
-    Returns:
-        fabric.operations._AttributeString: archive path.
-    """
-    if not os.path.isdir("versions"):
-        os.mkdir("versions")
-    cur_time = datetime.now()
-    output = "versions/web_static_{}{}{}{}{}{}.tgz".format(
-        cur_time.year,
-        cur_time.month,
-        cur_time.day,
-        cur_time.hour,
-        cur_time.minute,
-        cur_time.second
-    )
-    try:
-        print("Packing web_static to {}".format(output))
-        # extract the contents of a tar archive
-        local("tar -cvzf {} web_static".format(output))
-        archive_size = os.stat(output).st_size
-        print("web_static packed: {} -> {} Bytes".format(output, archive_size))
-    except Exception:
-        output = None
-    return output
+    if result.succeeded:
+        return archive_path
+    else:
+        return None
 
 
 def do_deploy(archive_path):
-    """distributes an archive to your web servers.
-
-    Args:
-        archive_path (string): path to archive
-
-    Returns:
-        Boolean: whether the archive is distributed or not
-    """
+    """Distributes an archive to your web servers"""
     if not os.path.exists(archive_path):
         return False
-    # Uncompress the archive to the folder,
-    # /data/web_static/releases/<archive filename without extension>
-    # on the web server
-    file_name = os.path.basename(archive_path)
-    folder_name = file_name.replace(".tgz", "")
-    folder_path = "/data/web_static/releases/{}/".format(folder_name)
-    success = False
 
     try:
-        # upload the archive to the /tmp/ directory of the web server
-        put(archive_path, "/tmp/{}".format(file_name))
+        put(archive_path, '/tmp/')
 
-        # Create new directory for release
-        run("mkdir -p {}".format(folder_path))
+        filename = os.path.basename(archive_path)
+        folder_name = "/data/web_static/releases/{}".format(
+                filename.split('.')[0])
 
-        # Untar archive
-        run("tar -xzf /tmp/{} -C {}".format(file_name, folder_path))
+        run("mkdir -p {}".format(folder_name))
+        run("tar -xzf /tmp/{} -C {}".format(filename, folder_name))
 
-        # Delete the archive from the web server
-        run("rm -rf /tmp/{}".format(file_name))
+        run("mv {}/web_static/* {}/".format(folder_name, folder_name))
 
-        # Move extraction to proper directory
-        run("mv {}web_static/* {}".format(folder_path, folder_path))
+        run("rm -rf {}/web_static".format(folder_name))
 
-        # Delete first copy of extraction after move
-        run("rm -rf {}web_static".format(folder_path))
-
-        # Delete the symbolic link /data/web_static/current from the web server
         run("rm -rf /data/web_static/current")
 
-        # Create new the symbolic link /data/web_static/current on web server,
-        # linked to the new version of your code,
-        # (/data/web_static/releases/<archive filename without extension>
-        run("ln -s {} /data/web_static/current".format(folder_path))
+        run("ln -s {} /data/web_static/current".format(folder_name))
 
-        print('New version deployed!')
-        success = True
+        print("New version deployed!")
+        return True
+    except Exception as e:
+        print(e)
+        return False
 
-    except Exception:
-        success = False
-        print("Could not deploy")
-    return success
+
+def deploy():
+    """creates and distributes an archive to your web servers"""
+    archive_path = do_pack()
+    if archive_path is None:
+        return False
+    return do_deploy(archive_path)
